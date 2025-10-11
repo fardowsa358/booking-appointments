@@ -1,5 +1,6 @@
+// middleware/errorMiddleware.js
 // Custom error-handling middleware
-export const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, next) => {
   console.error(err.stack);
 
   const statusCode = err.statusCode || 500;
@@ -9,4 +10,8 @@ export const errorHandler = (err, req, res, next) => {
     success: false,
     error: message
   });
+};
+
+module.exports = {
+  errorHandler
 };

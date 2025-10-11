@@ -1,11 +1,12 @@
-import express from "express";
-import {
+// routes/users.js
+const express = require("express");
+const {
   getAllUsers,
   getUserByIdController,
   updateUserController,
   deleteUserController
-} from "../controllers/userController.js";
-import { verifyToken } from "../middleware/authMiddleware.js";
+} = require("../controllers/userController");
+const { verifyToken } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -21,4 +22,4 @@ router.put("/:id", verifyToken, updateUserController);
 // Delete user
 router.delete("/:id", verifyToken, deleteUserController);
 
-export default router;
+module.exports = router;
