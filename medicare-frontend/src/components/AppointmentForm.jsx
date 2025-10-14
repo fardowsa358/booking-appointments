@@ -1,55 +1,84 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import api from "../services/api";
 
-const doctorOptions = {
-  cardiology: [
-    { name: "Dr. John Smith", value: "dr-smith" },
-    { name: "Dr. Robert Taylor", value: "dr-taylor" }
-  ],
-  pediatrics: [
-    { name: "Dr. Sarah Johnson", value: "dr-johnson" },
-    { name: "Dr. Lisa Anderson", value: "dr-anderson" }
-  ],
-  orthopedics: [
-    { name: "Dr. Michael Williams", value: "dr-williams" },
-    { name: "Dr. James Miller", value: "dr-miller" }
-  ],
-  neurology: [
-    { name: "Dr. Emily Brown", value: "dr-brown" },
-    { name: "Dr. Patricia Davis", value: "dr-davis" }
-  ],
-  dentistry: [
-    { name: "Dr. David Wilson", value: "dr-wilson" },
-    { name: "Dr. Jennifer Moore", value: "dr-moore" }
-  ]
-};
+// Departments inferred from specialties
+const specialties = [
+  "Cardiology", "Pediatrics", "Orthopedics", "Neurology", "Dentistry", "Dermatology", "General Medicine"
+];
 
 const AppointmentForm = () => {
+  const { user, token, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
     department: "",
-    doctor: "",
+    doctor_id: "",
     date: "",
-    message: ""
+    time: "",
+    reason: "",
   });
+  const [doctors, setDoctors] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    const loadDoctors = async () => {
+      try {
+        const list = await api.getDoctorsPublic();
+        setDoctors(list);
+      } catch (e) {
+        setDoctors([]);
+      }
+    };
+    loadDoctors();
+  }, []);
+
+  const departmentOptions = useMemo(() => {
+    const set = new Set();
+    doctors.forEach(d => { if (d.specialty) set.add(d.specialty); });
+    return Array.from(set);
+  }, [doctors]);
+
+  const filteredDoctors = useMemo(() => {
+    return doctors.filter(d => !formData.department || d.specialty === formData.department);
+  }, [doctors, formData.department]);
 
   const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }));
+    setFormData(prev => ({ ...prev, [e.target.name || e.target.id]: e.target.value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert(`Thank you, ${formData.fullName}! Your appointment request has been submitted. We will contact you at ${formData.email} to confirm your appointment in the ${formData.department} department.`);
-    setFormData({
-      fullName: "",
-      email: "",
-      phone: "",
-      department: "",
-      doctor: "",
-      date: "",
-      message: ""
-    });
+    setError("");
+    setSuccess("");
+
+    if (!isAuthenticated()) {
+      setError("Please login to book an appointment.");
+      return;
+    }
+
+    if (!formData.doctor_id || !formData.date || !formData.time) {
+      setError("Doctor, date and time are required.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        doctor_id: Number(formData.doctor_id),
+        date: formData.date,
+        time: formData.time,
+        reason: formData.reason || null,
+        notes: null
+      };
+      const res = await api.createAppointment(payload, token);
+      setSuccess("Appointment booked successfully.");
+      setFormData({ department: "", doctor_id: "", date: "", time: "", reason: "" });
+    } catch (err) {
+      setError(err.message || "Failed to book appointment.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -64,49 +93,45 @@ const AppointmentForm = () => {
             <h2>Schedule Your Visit</h2>
             <p>We'll contact you to confirm your appointment.</p>
             <form onSubmit={handleSubmit}>
+              {error && <p style={{ color: 'red', marginBottom: 10 }}>{error}</p>}
+              {success && <p style={{ color: 'green', marginBottom: 10 }}>{success}</p>}
               <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="fullName">Full Name</label>
-                  <input type="text" id="fullName" value={formData.fullName} onChange={handleChange} className="form-control" placeholder="Enter your full name" required />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="email">Email Address</label>
-                  <input type="email" id="email" value={formData.email} onChange={handleChange} className="form-control" placeholder="Enter your email" required />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="phone">Phone Number</label>
-                  <input type="tel" id="phone" value={formData.phone} onChange={handleChange} className="form-control" placeholder="Enter your phone number" required />
-                </div>
                 <div className="form-group">
                   <label htmlFor="department">Department</label>
-                  <select id="department" value={formData.department} onChange={handleChange} className="form-control" required>
+                  <select id="department" name="department" value={formData.department} onChange={handleChange} className="form-control">
                     <option value="">Select Department</option>
-                    {Object.keys(doctorOptions).map(dep => <option key={dep} value={dep}>{dep.charAt(0).toUpperCase() + dep.slice(1)}</option>)}
+                    {departmentOptions.map(dep => <option key={dep} value={dep}>{dep}</option>)}
                   </select>
                 </div>
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="doctor">Preferred Doctor</label>
-                  <select id="doctor" value={formData.doctor} onChange={handleChange} className="form-control" required>
+                  <label htmlFor="doctor_id">Preferred Doctor</label>
+                  <select id="doctor_id" name="doctor_id" value={formData.doctor_id} onChange={handleChange} className="form-control" required>
                     <option value="">Select Doctor</option>
-                    {formData.department && doctorOptions[formData.department].map(doc => (
-                      <option key={doc.value} value={doc.value}>{doc.name}</option>
+                    {filteredDoctors.map(doc => (
+                      <option key={doc.id} value={doc.id}>{doc.name} ({doc.specialty})</option>
                     ))}
                   </select>
                 </div>
                 <div className="form-group">
                   <label htmlFor="date">Preferred Date</label>
-                  <input type="date" id="date" value={formData.date} onChange={handleChange} className="form-control" required />
+                  <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} className="form-control" required />
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="time">Preferred Time</label>
+                  <input type="time" id="time" name="time" value={formData.time} onChange={handleChange} className="form-control" required />
                 </div>
               </div>
               <div className="form-group">
-                <label htmlFor="message">Additional Message (Optional)</label>
-                <textarea id="message" value={formData.message} onChange={handleChange} className="form-control" rows="4" placeholder="Any specific requirements or notes"></textarea>
+                <label htmlFor="reason">Reason (Optional)</label>
+                <textarea id="reason" name="reason" value={formData.reason} onChange={handleChange} className="form-control" rows="4" placeholder="Any specific requirements or notes"></textarea>
               </div>
-              <button type="submit" className="btn btn-appointment" style={{ width: "100%" }}>Book Appointment</button>
+              <button type="submit" className="btn btn-appointment" disabled={submitting} style={{ width: "100%" }}>
+                {submitting ? 'Booking...' : 'Book Appointment'}
+              </button>
             </form>
           </div>
           <div className="appointment-image"></div>

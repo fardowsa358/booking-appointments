@@ -1,35 +1,44 @@
 import React, { useState } from "react";
-
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    // Fake login credentials
-    const validEmail = "admin@medicare.com";
-    const validPassword = "12345";
+    console.log('Attempting login with:', { email, password });
+    const result = await login(email, password);
+    console.log('Login result:', result);
 
-    if (email === validEmail && password === validPassword) {
-      alert("✅ Login Successful! Welcome to Medicare Dashboard");
-      // Halkan waxaad ku dari kartaa navigate("/dashboard") haddii react-router-dom aad isticmaasho
+    if (result.success) {
+      // Redirect based on user role
+      const user = JSON.parse(localStorage.getItem('user'));
+      console.log('Redirecting user:', user);
+      navigate(user.role === 'admin' ? '/admin' : '/dashboard');
     } else {
-      setError("❌ Invalid email or password");
+      setError(result.error);
     }
+    
+    setLoading(false);
   };
 
   return (
-    <section id="login" style={{ padding: "4rem 0" }}>
-      <div className="container">
-        <div className="section-title">
-          <h2>Login</h2>
-          <p>Access your account</p>
-        </div>
+    <div style={{ padding: "2rem" }}>
+      <div className="section-title" style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+        <h2>Login</h2>
+        <p>Access your account</p>
+      </div>
 
-        <form
+      <form
           onSubmit={handleSubmit}
           style={{
             maxWidth: 480,
@@ -87,21 +96,21 @@ const LoginForm = () => {
           <button
             type="submit"
             className="btn"
+            disabled={loading}
             style={{
               width: "100%",
               padding: "10px",
-              background: "#007bff",
+              background: loading ? "#ccc" : "#007bff",
               color: "white",
               border: "none",
               borderRadius: "8px",
-              cursor: "pointer"
+              cursor: loading ? "not-allowed" : "pointer"
             }}
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
-      </div>
-    </section>
+    </div>
   );
 };
 
