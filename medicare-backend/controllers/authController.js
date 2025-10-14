@@ -5,11 +5,12 @@ const db = require("../db");
 require('dotenv').config();
 
 const registerUser = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password,phone } = req.body;
+  // console.log(phone)
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const query = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)";
-    db.query(query, [name, email, hashedPassword], (err, result) => {
+    const query = "INSERT INTO users (name, email, password, phone) VALUES (?, ?, ?,?)";
+    db.query(query, [name, email, hashedPassword,phone], (err, result) => {
       if (err) return res.status(400).json({ error: err.message });
       res.json({ message: "User registered successfully" });
     });
@@ -42,6 +43,7 @@ const loginUser = (req, res) => {
         id: user.id, 
         name: user.name, 
         email: user.email, 
+        phone: user.phone,
         role: user.role 
       } 
     });
