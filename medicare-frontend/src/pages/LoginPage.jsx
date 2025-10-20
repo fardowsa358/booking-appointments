@@ -33,7 +33,7 @@ const LoginPage = () => {
           </div>
           
           <div className="auth-content">
-            {activeTab === "login" ? <LoginForm /> : <RegisterForm />}
+            {activeTab === "login" ? <LoginForm /> : <RegisterForm setActiveTab={setActiveTab} />}
           </div>
         </div>
       </div>

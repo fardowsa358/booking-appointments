@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 const UserProfile = () => {
-  const { user,token, logout } = useAuth();
+  const { user,token, logout, updateUserInContext } = useAuth();
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('appointments');
+  const [editMode, setEditMode] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [saving, setSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState('');
 
   useEffect(() => {
     if (user && token) {
@@ -50,6 +55,41 @@ const UserProfile = () => {
       } catch (error) {
         console.error('Error cancelling appointment:', error);
       }
+    }
+  };
+
+  const startEditProfile = () => {
+    setProfileMsg('');
+    setProfileForm({ name: user?.name || '', email: user?.email || '', phone: user?.phone || '', password: '' });
+    setEditMode(true);
+  };
+
+  const onProfileChange = (e) => {
+    setProfileForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const submitProfile = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setProfileMsg('');
+    try {
+      const payload = { name: profileForm.name, email: profileForm.email, phone: profileForm.phone };
+      if (profileForm.password) payload.password = profileForm.password;
+      await api.updateUser(user.id, payload, token);
+      const emailChanged = profileForm.email !== user.email;
+      // update UI immediately
+      updateUserInContext({ name: profileForm.name, email: profileForm.email, phone: profileForm.phone });
+      setEditMode(false);
+      if (emailChanged) {
+        logout();
+        navigate('/login');
+        return;
+      }
+      setProfileMsg('Profile updated');
+    } catch (err) {
+      setProfileMsg(err.message || 'Failed to update profile');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -123,7 +163,7 @@ const UserProfile = () => {
             <div className="appointments-section">
               <div className="section-header">
                 <h2>My Appointments</h2>
-                <a href="#appointment" className="btn btn-primary">
+                <a href="/#appointment" className="btn btn-primary">
                   <i className="fas fa-plus"></i>
                   Book New Appointment
                 </a>
@@ -134,7 +174,7 @@ const UserProfile = () => {
                   <i className="fas fa-calendar-times"></i>
                   <h3>No Appointments Yet</h3>
                   <p>You haven't booked any appointments yet. Book your first appointment to get started!</p>
-                  <a href="#appointment" className="btn btn-primary">
+                  <a href="/#appointment" className="btn btn-primary">
                     Book Appointment
                   </a>
                 </div>
@@ -176,10 +216,7 @@ const UserProfile = () => {
                             Cancel
                           </button>
                         )}
-                        <button className="btn btn-sm btn-primary">
-                          <i className="fas fa-edit"></i>
-                          Edit
-                        </button>
+                       
                       </div>
                     </div>
                   ))}
@@ -191,30 +228,56 @@ const UserProfile = () => {
           {activeTab === 'profile' && (
             <div className="profile-section">
               <h2>Profile Settings</h2>
-              <div className="profile-form">
-                <div className="form-group">
-                  <label>Full Name</label>
-                  <input type="text" value={user?.name} disabled />
+              {!editMode ? (
+                <div className="profile-form">
+                  <div className="form-group">
+                    <label>Full Name</label>
+                    <input type="text" value={user?.name || ''} disabled />
+                  </div>
+                  <div className="form-group">
+                    <label>Email Address</label>
+                    <input type="email" value={user?.email || ''} disabled />
+                  </div>
+                  <div className="form-group">
+                    <label>Phone</label>
+                    <input type="text" value={user?.phone || ''} disabled />
+                  </div>
+                  <div className="form-group">
+                    <label>Role</label>
+                    <input type="text" value={user?.role} disabled />
+                  </div>
+                  <div className="form-actions">
+                    <button className="btn btn-primary" onClick={startEditProfile}>
+                      <i className="fas fa-edit"></i>
+                      Edit Profile
+                    </button>
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Email Address</label>
-                  <input type="email" value={user?.email} disabled />
-                </div>
-                <div className="form-group">
-                  <label>Role</label>
-                  <input type="text" value={user?.role} disabled />
-                </div>
-                <div className="form-actions">
-                  <button className="btn btn-primary">
-                    <i className="fas fa-edit"></i>
-                    Edit Profile
-                  </button>
-                  <button className="btn btn-secondary">
-                    <i className="fas fa-key"></i>
-                    Change Password
-                  </button>
-                </div>
-              </div>
+              ) : (
+                <form className="profile-form" onSubmit={submitProfile}>
+                  {profileMsg && <p style={{ marginBottom: '1rem' }}>{profileMsg}</p>}
+                  <div className="form-group">
+                    <label>Full Name</label>
+                    <input name="name" value={profileForm.name} onChange={onProfileChange} required />
+                  </div>
+                  <div className="form-group">
+                    <label>Email Address</label>
+                    <input type="email" name="email" value={profileForm.email} onChange={onProfileChange} required />
+                  </div>
+                  <div className="form-group">
+                    <label>Phone</label>
+                    <input name="phone" value={profileForm.phone} onChange={onProfileChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>New Password (optional)</label>
+                    <input type="password" name="password" value={profileForm.password} onChange={onProfileChange} />
+                  </div>
+                  <div className="form-actions">
+                    <button type="button" className="btn btn-secondary" onClick={() => setEditMode(false)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
         </div>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 const LoginForm = () => {
@@ -109,6 +109,21 @@ const LoginForm = () => {
           >
             {loading ? "Logging in..." : "Login"}
           </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => navigate("/")}
+            style={{
+              width: "100%",
+              padding: "10px",
+              marginTop: "10px",
+              background: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer"
+            }}>Back to Home</button>
+          
         </form>
     </div>
   );

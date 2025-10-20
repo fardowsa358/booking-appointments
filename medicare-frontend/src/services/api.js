@@ -176,6 +176,14 @@ class ApiService {
     });
   }
 
+  async updateUser(userId, updates, token) {
+    return this.request(`/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+      token,
+    });
+  }
+
   async updateUserStatus(userId, status, token) {
     return this.request(`/users/${userId}/status`, {
       method: 'PATCH',
