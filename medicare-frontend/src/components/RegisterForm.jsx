@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
-const RegisterForm = () => {
+const RegisterForm = ({setActiveTab}) => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -47,7 +47,7 @@ const RegisterForm = () => {
 
     if (result.success) {
       alert("Registration successful! Please login with your credentials.");
-      navigate("/login");
+      setActiveTab("login");
     } else {
       setError(result.error);
     }

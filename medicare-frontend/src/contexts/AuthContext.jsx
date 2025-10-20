@@ -94,6 +94,14 @@ export const AuthProvider = ({ children }) => {
     return user && user.role === 'admin';
   };
 
+  const updateUserInContext = (partial) => {
+    setUser(prev => {
+      const next = { ...prev, ...partial };
+      localStorage.setItem('user', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const value = {
     user,
     token,
@@ -103,6 +111,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     isAuthenticated,
     isAdmin,
+    updateUserInContext,
   };
 
   return (
